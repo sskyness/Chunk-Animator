@@ -27,11 +27,10 @@
     "fabricloader": ">=${loader_version}",
     "fabric-api": "*",
     "cloth-config2": "*",
-    "minecraft": "${minecraft_version}",
+    "minecraft": "${minecraft_dependency}",
     "java": ">=${java_version}"
   },
   "suggests": {
     "modmenu": "*"
   }
 }
-

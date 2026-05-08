@@ -1,10 +1,10 @@
 package ru.donyka.chunkanimator.handler;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.render.chunk.ChunkBuilder;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import ru.donyka.chunkanimator.AnimationOffset;
 import ru.donyka.chunkanimator.config.AnimationMode;
 import ru.donyka.chunkanimator.config.ChunkAnimatorConfig;
@@ -12,11 +12,11 @@ import ru.donyka.chunkanimator.config.ChunkAnimatorConfig;
 import java.util.WeakHashMap;
 
 public final class AnimationHandler {
-    private final MinecraftClient client = MinecraftClient.getInstance();
-    private final WeakHashMap<ChunkBuilder.BuiltChunk, AnimationData> timeStamps = new WeakHashMap<>();
+    private final Minecraft client = Minecraft.getInstance();
+    private final WeakHashMap<SectionRenderDispatcher.RenderSection, AnimationData> timeStamps = new WeakHashMap<>();
 
-    public AnimationOffset offsetFor(ChunkBuilder.BuiltChunk builtChunk) {
-        AnimationData animationData = timeStamps.get(builtChunk);
+    public AnimationOffset offsetFor(SectionRenderDispatcher.RenderSection renderSection) {
+        AnimationData animationData = timeStamps.get(renderSection);
 
         if (animationData == null) {
             return AnimationOffset.ZERO;
@@ -26,7 +26,7 @@ public final class AnimationHandler {
         int animationDuration = config.animationDuration;
 
         if (animationDuration <= 0) {
-            timeStamps.remove(builtChunk);
+            timeStamps.remove(renderSection);
             return AnimationOffset.ZERO;
         }
 
@@ -37,21 +37,21 @@ public final class AnimationHandler {
             animationData.timeStamp = time;
 
             if (config.mode == AnimationMode.HORIZONTAL_SLIDE_ALTERNATE && client.player != null) {
-                animationData.chunkFacing = getChunkFacing(client.player, builtChunk.getOrigin());
+                animationData.chunkFacing = getChunkFacing(client.player, renderSection.getRenderOrigin());
             }
         }
 
         long timeDifference = System.currentTimeMillis() - time;
 
         if (timeDifference >= animationDuration) {
-            timeStamps.remove(builtChunk);
+            timeStamps.remove(renderSection);
             return AnimationOffset.ZERO;
         }
 
-        return getOffset(config, builtChunk, animationData, timeDifference);
+        return getOffset(config, renderSection, animationData, timeDifference);
     }
 
-    public void setOrigin(ChunkBuilder.BuiltChunk builtChunk, BlockPos position) {
+    public void setOrigin(SectionRenderDispatcher.RenderSection renderSection, BlockPos position) {
         if (client.player == null) {
             return;
         }
@@ -66,9 +66,9 @@ public final class AnimationHandler {
             Direction facing = ChunkAnimatorConfig.get().mode == AnimationMode.HORIZONTAL_SLIDE
                     ? getChunkFacing(playerPos, centeredChunkPos)
                     : null;
-            timeStamps.put(builtChunk, new AnimationData(-1L, facing));
+            timeStamps.put(renderSection, new AnimationData(-1L, facing));
         } else {
-            timeStamps.remove(builtChunk);
+            timeStamps.remove(renderSection);
         }
     }
 
@@ -76,8 +76,8 @@ public final class AnimationHandler {
         timeStamps.clear();
     }
 
-    private AnimationOffset getOffset(ChunkAnimatorConfig config, ChunkBuilder.BuiltChunk builtChunk, AnimationData animationData, long timeDifference) {
-        BlockPos origin = builtChunk.getOrigin();
+    private AnimationOffset getOffset(ChunkAnimatorConfig config, SectionRenderDispatcher.RenderSection renderSection, AnimationData animationData, long timeDifference) {
+        BlockPos origin = renderSection.getRenderOrigin();
         AnimationMode mode = config.mode;
 
         if (mode == AnimationMode.HYBRID) {
@@ -99,7 +99,7 @@ public final class AnimationHandler {
 
             if (facing != null) {
                 float distance = -(200.0F - ease(config, timeDifference, 200.0F));
-                return new AnimationOffset(facing.getOffsetX() * distance, 0.0F, facing.getOffsetZ() * distance);
+                return new AnimationOffset(facing.getStepX() * distance, 0.0F, facing.getStepZ() * distance);
             }
         }
 
@@ -111,19 +111,19 @@ public final class AnimationHandler {
     }
 
     private int minY() {
-        return client.world == null ? 0 : client.world.getDimension().minY();
+        return client.level == null ? 0 : client.level.getMinY();
     }
 
     private int maxY() {
-        return client.world == null ? 256 : client.world.getDimension().minY() + client.world.getDimension().height();
+        return client.level == null ? 256 : client.level.getMaxY();
     }
 
     private double horizonHeight() {
         return 63.0D;
     }
 
-    private static BlockPos zeroedPlayerPos(ClientPlayerEntity player) {
-        BlockPos playerPos = player.getBlockPos();
+    private static BlockPos zeroedPlayerPos(LocalPlayer player) {
+        BlockPos playerPos = player.blockPosition();
         return new BlockPos(playerPos.getX(), 0, playerPos.getZ());
     }
 
@@ -131,7 +131,7 @@ public final class AnimationHandler {
         return new BlockPos(position.getX() + 8, 0, position.getZ() + 8);
     }
 
-    private static Direction getChunkFacing(ClientPlayerEntity player, BlockPos chunkOrigin) {
+    private static Direction getChunkFacing(LocalPlayer player, BlockPos chunkOrigin) {
         return getChunkFacing(zeroedPlayerPos(player), zeroedCenteredChunkPos(chunkOrigin));
     }
 

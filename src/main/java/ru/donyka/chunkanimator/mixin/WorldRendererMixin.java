@@ -1,8 +1,8 @@
 package ru.donyka.chunkanimator.mixin;
 
 import com.llamalad7.mixinextras.sugar.Local;
-import net.minecraft.client.render.WorldRenderer;
-import net.minecraft.client.render.chunk.ChunkBuilder;
+import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.spongepowered.asm.mixin.Mixin;
@@ -11,18 +11,18 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 import ru.donyka.chunkanimator.AnimationOffset;
 import ru.donyka.chunkanimator.ChunkAnimator;
 
-@Mixin(WorldRenderer.class)
+@Mixin(LevelRenderer.class)
 public abstract class WorldRendererMixin {
     @ModifyArg(
-            method = "renderBlockLayers",
+            method = "prepareChunkRenders",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gl/DynamicUniforms$ChunkSectionsValue;<init>(Lorg/joml/Matrix4fc;IIIFII)V"
+                    target = "Lnet/minecraft/client/renderer/DynamicUniforms$ChunkSectionInfo;<init>(Lorg/joml/Matrix4fc;IIIFII)V"
             ),
             index = 0
     )
-    private Matrix4fc chunkanimator$offsetChunk(Matrix4fc original, @Local ChunkBuilder.BuiltChunk builtChunk) {
-        AnimationOffset offset = ChunkAnimator.animationHandler().offsetFor(builtChunk);
+    private Matrix4fc chunkanimator$offsetChunk(Matrix4fc original, @Local SectionRenderDispatcher.RenderSection renderSection) {
+        AnimationOffset offset = ChunkAnimator.animationHandler().offsetFor(renderSection);
 
         if (offset.isZero()) {
             return original;
