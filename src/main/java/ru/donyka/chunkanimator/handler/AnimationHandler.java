@@ -111,11 +111,11 @@ public final class AnimationHandler {
     }
 
     private int minY() {
-        return client.world == null ? 0 : client.world.getDimension().minY();
+        return 0;
     }
 
     private int maxY() {
-        return client.world == null ? 256 : client.world.getDimension().minY() + client.world.getDimension().height();
+        return client.world == null ? 256 : client.world.getDimension().getLogicalHeight();
     }
 
     private double horizonHeight() {
@@ -158,4 +158,3 @@ public final class AnimationHandler {
         }
     }
 }
-

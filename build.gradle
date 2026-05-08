@@ -56,6 +56,7 @@ processResources {
 }
 
 def targetJavaVersion = Integer.parseInt(project.java_version)
+def toolchainJavaVersion = Integer.parseInt(project.findProperty('toolchain_java_version') ?: project.java_version)
 
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = 'UTF-8'
@@ -63,7 +64,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    toolchain.languageVersion = JavaLanguageVersion.of(toolchainJavaVersion)
     withSourcesJar()
 }
 

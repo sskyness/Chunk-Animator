@@ -16,7 +16,7 @@ public abstract class WorldRendererMixin {
             method = "renderLayer",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gl/GlUniform;set(FFF)V",
+                    target = "Lnet/minecraft/client/util/math/MatrixStack;translate(DDD)V",
                     ordinal = 0
             )
     )
@@ -24,9 +24,9 @@ public abstract class WorldRendererMixin {
         AnimationOffset offset = ChunkAnimator.animationHandler().offsetFor(builtChunk);
 
         if (!offset.isZero()) {
-            args.set(0, ((Float) args.get(0)) + offset.x());
-            args.set(1, ((Float) args.get(1)) + offset.y());
-            args.set(2, ((Float) args.get(2)) + offset.z());
+            args.set(0, ((Double) args.get(0)) + offset.x());
+            args.set(1, ((Double) args.get(1)) + offset.y());
+            args.set(2, ((Double) args.get(2)) + offset.z());
         }
     }
 }
