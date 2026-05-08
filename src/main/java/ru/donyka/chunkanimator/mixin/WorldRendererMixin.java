@@ -3,8 +3,8 @@ package ru.donyka.chunkanimator.mixin;
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.client.render.chunk.ChunkBuilder;
-import org.joml.Vector3f;
-import org.joml.Vector3fc;
+import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
@@ -17,17 +17,17 @@ public abstract class WorldRendererMixin {
             method = "renderBlockLayers",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gl/DynamicUniforms$UniformValue;<init>(Lorg/joml/Matrix4fc;Lorg/joml/Vector4fc;Lorg/joml/Vector3fc;Lorg/joml/Matrix4fc;F)V"
+                    target = "Lnet/minecraft/client/gl/DynamicUniforms$ChunkSectionsValue;<init>(Lorg/joml/Matrix4fc;IIIFII)V"
             ),
-            index = 2
+            index = 0
     )
-    private Vector3fc chunkanimator$offsetChunk(Vector3fc original, @Local ChunkBuilder.BuiltChunk builtChunk) {
+    private Matrix4fc chunkanimator$offsetChunk(Matrix4fc original, @Local ChunkBuilder.BuiltChunk builtChunk) {
         AnimationOffset offset = ChunkAnimator.animationHandler().offsetFor(builtChunk);
 
         if (offset.isZero()) {
             return original;
         }
 
-        return new Vector3f(original).add(offset.x(), offset.y(), offset.z());
+        return new Matrix4f(original).translate(offset.x(), offset.y(), offset.z());
     }
 }
