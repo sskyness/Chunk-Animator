@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "ru.donyka.chunkanimator.mixin",
+  "compatibilityLevel": "JAVA_${java_version}",
+  "client": [
+    "BuiltChunkMixin",
+    "WorldRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
+
