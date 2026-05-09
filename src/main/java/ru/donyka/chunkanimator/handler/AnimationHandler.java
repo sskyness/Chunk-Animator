@@ -13,6 +13,7 @@ import java.util.WeakHashMap;
 public final class AnimationHandler {
     private final MinecraftClient client = MinecraftClient.getInstance();
     private final WeakHashMap<Object, AnimationData> timeStamps = new WeakHashMap<>();
+    private final WeakHashMap<Object, BlockPos> completedOrigins = new WeakHashMap<>();
 
     public AnimationOffset offsetFor(Object builtChunk) {
         AnimationData animationData = timeStamps.get(builtChunk);
@@ -45,6 +46,7 @@ public final class AnimationHandler {
 
         if (timeDifference >= animationDuration) {
             timeStamps.remove(builtChunk);
+            completedOrigins.put(builtChunk, animationData.origin);
             return AnimationOffset.ZERO;
         }
 
@@ -53,6 +55,12 @@ public final class AnimationHandler {
 
     public AnimationOffset offsetFor(Object builtChunk, BlockPos position) {
         if (!timeStamps.containsKey(builtChunk)) {
+            BlockPos completedOrigin = completedOrigins.get(builtChunk);
+
+            if (samePosition(completedOrigin, position)) {
+                return AnimationOffset.ZERO;
+            }
+
             setOrigin(builtChunk, position);
         }
 
@@ -60,6 +68,8 @@ public final class AnimationHandler {
     }
 
     public void setOrigin(Object builtChunk, BlockPos position) {
+        completedOrigins.remove(builtChunk);
+
         ClientPlayerEntity player = client.player;
         Direction facing = null;
         boolean nearPlayer = false;
@@ -80,11 +90,13 @@ public final class AnimationHandler {
             timeStamps.put(builtChunk, new AnimationData(-1L, facing, new BlockPos(position.getX(), position.getY(), position.getZ())));
         } else {
             timeStamps.remove(builtChunk);
+            completedOrigins.put(builtChunk, new BlockPos(position.getX(), position.getY(), position.getZ()));
         }
     }
 
     public void clear() {
         timeStamps.clear();
+        completedOrigins.clear();
     }
 
     private AnimationOffset getOffset(ChunkAnimatorConfig config, AnimationData animationData, long timeDifference) {
@@ -159,6 +171,14 @@ public final class AnimationHandler {
         return differenceZ > 0 ? Direction.SOUTH : Direction.NORTH;
     }
 
+    private static boolean samePosition(BlockPos first, BlockPos second) {
+        return first != null
+                && second != null
+                && first.getX() == second.getX()
+                && first.getY() == second.getY()
+                && first.getZ() == second.getZ();
+    }
+
     private static final class AnimationData {
         private long timeStamp;
         private Direction chunkFacing;
@@ -171,4 +191,3 @@ public final class AnimationHandler {
         }
     }
 }
-
