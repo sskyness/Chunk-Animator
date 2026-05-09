@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "ru.donyka.chunkanimator.mixin",
+  "plugin": "ru.donyka.chunkanimator.mixin.ChunkAnimatorMixinPlugin",
+  "compatibilityLevel": "JAVA_${java_version}",
+  "client": [
+    "BuiltChunkMixin",
+    "WorldRendererMixin",
+    "sodium.SodiumRenderRegionMixin",
+    "sodium.SodiumDefaultChunkRendererMixin",
+    "sodium.legacy.LegacySodiumRenderRegionMixin",
+    "sodium.legacy.LegacySodiumDefaultChunkRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
+
