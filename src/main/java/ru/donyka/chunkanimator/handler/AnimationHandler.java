@@ -2,7 +2,6 @@ package ru.donyka.chunkanimator.handler;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import ru.donyka.chunkanimator.AnimationOffset;
@@ -13,9 +12,9 @@ import java.util.WeakHashMap;
 
 public final class AnimationHandler {
     private final Minecraft client = Minecraft.getInstance();
-    private final WeakHashMap<SectionRenderDispatcher.RenderSection, AnimationData> timeStamps = new WeakHashMap<>();
+    private final WeakHashMap<Object, AnimationData> timeStamps = new WeakHashMap<>();
 
-    public AnimationOffset offsetFor(SectionRenderDispatcher.RenderSection renderSection) {
+    public AnimationOffset offsetFor(Object renderSection) {
         AnimationData animationData = timeStamps.get(renderSection);
 
         if (animationData == null) {
@@ -37,7 +36,7 @@ public final class AnimationHandler {
             animationData.timeStamp = time;
 
             if (config.mode == AnimationMode.HORIZONTAL_SLIDE_ALTERNATE && client.player != null) {
-                animationData.chunkFacing = getChunkFacing(client.player, renderSection.getRenderOrigin());
+                animationData.chunkFacing = getChunkFacing(client.player, animationData.origin);
             }
         }
 
@@ -48,10 +47,10 @@ public final class AnimationHandler {
             return AnimationOffset.ZERO;
         }
 
-        return getOffset(config, renderSection, animationData, timeDifference);
+        return getOffset(config, animationData, timeDifference);
     }
 
-    public void setOrigin(SectionRenderDispatcher.RenderSection renderSection, BlockPos position) {
+    public void setOrigin(Object renderSection, BlockPos position) {
         if (client.player == null) {
             return;
         }
@@ -66,7 +65,7 @@ public final class AnimationHandler {
             Direction facing = ChunkAnimatorConfig.get().mode == AnimationMode.HORIZONTAL_SLIDE
                     ? getChunkFacing(playerPos, centeredChunkPos)
                     : null;
-            timeStamps.put(renderSection, new AnimationData(-1L, facing));
+            timeStamps.put(renderSection, new AnimationData(-1L, facing, new BlockPos(position.getX(), position.getY(), position.getZ())));
         } else {
             timeStamps.remove(renderSection);
         }
@@ -76,8 +75,8 @@ public final class AnimationHandler {
         timeStamps.clear();
     }
 
-    private AnimationOffset getOffset(ChunkAnimatorConfig config, SectionRenderDispatcher.RenderSection renderSection, AnimationData animationData, long timeDifference) {
-        BlockPos origin = renderSection.getRenderOrigin();
+    private AnimationOffset getOffset(ChunkAnimatorConfig config, AnimationData animationData, long timeDifference) {
+        BlockPos origin = animationData.origin;
         AnimationMode mode = config.mode;
 
         if (mode == AnimationMode.HYBRID) {
@@ -151,10 +150,12 @@ public final class AnimationHandler {
     private static final class AnimationData {
         private long timeStamp;
         private Direction chunkFacing;
+        private final BlockPos origin;
 
-        private AnimationData(long timeStamp, Direction chunkFacing) {
+        private AnimationData(long timeStamp, Direction chunkFacing, BlockPos origin) {
             this.timeStamp = timeStamp;
             this.chunkFacing = chunkFacing;
+            this.origin = origin;
         }
     }
 }
