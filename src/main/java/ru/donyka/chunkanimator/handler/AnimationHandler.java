@@ -13,6 +13,7 @@ import java.util.WeakHashMap;
 public final class AnimationHandler {
     private final Minecraft client = Minecraft.getInstance();
     private final WeakHashMap<Object, AnimationData> timeStamps = new WeakHashMap<>();
+    private final WeakHashMap<Object, BlockPos> completedOrigins = new WeakHashMap<>();
 
     public AnimationOffset offsetFor(Object renderSection) {
         AnimationData animationData = timeStamps.get(renderSection);
@@ -45,6 +46,7 @@ public final class AnimationHandler {
 
         if (timeDifference >= animationDuration) {
             timeStamps.remove(renderSection);
+            completedOrigins.put(renderSection, animationData.origin);
             return AnimationOffset.ZERO;
         }
 
@@ -53,6 +55,12 @@ public final class AnimationHandler {
 
     public AnimationOffset offsetFor(Object renderSection, BlockPos position) {
         if (!timeStamps.containsKey(renderSection)) {
+            BlockPos completedOrigin = completedOrigins.get(renderSection);
+
+            if (samePosition(completedOrigin, position)) {
+                return AnimationOffset.ZERO;
+            }
+
             setOrigin(renderSection, position);
         }
 
@@ -60,6 +68,8 @@ public final class AnimationHandler {
     }
 
     public void setOrigin(Object renderSection, BlockPos position) {
+        completedOrigins.remove(renderSection);
+
         LocalPlayer player = client.player;
         Direction facing = null;
         boolean nearPlayer = false;
@@ -80,11 +90,13 @@ public final class AnimationHandler {
             timeStamps.put(renderSection, new AnimationData(-1L, facing, new BlockPos(position.getX(), position.getY(), position.getZ())));
         } else {
             timeStamps.remove(renderSection);
+            completedOrigins.put(renderSection, new BlockPos(position.getX(), position.getY(), position.getZ()));
         }
     }
 
     public void clear() {
         timeStamps.clear();
+        completedOrigins.clear();
     }
 
     private AnimationOffset getOffset(ChunkAnimatorConfig config, AnimationData animationData, long timeDifference) {
@@ -157,6 +169,14 @@ public final class AnimationHandler {
         }
 
         return differenceZ > 0 ? Direction.SOUTH : Direction.NORTH;
+    }
+
+    private static boolean samePosition(BlockPos first, BlockPos second) {
+        return first != null
+                && second != null
+                && first.getX() == second.getX()
+                && first.getY() == second.getY()
+                && first.getZ() == second.getZ();
     }
 
     private static final class AnimationData {
