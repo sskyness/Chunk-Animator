@@ -35,7 +35,8 @@ public final class AnimationHandler {
             time = System.currentTimeMillis();
             animationData.timeStamp = time;
 
-            if (config.mode == AnimationMode.HORIZONTAL_SLIDE_ALTERNATE && client.player != null) {
+            if ((config.mode == AnimationMode.HORIZONTAL_SLIDE || config.mode == AnimationMode.HORIZONTAL_SLIDE_ALTERNATE)
+                    && client.player != null) {
                 animationData.chunkFacing = getChunkFacing(client.player, animationData.origin);
             }
         }
@@ -50,21 +51,32 @@ public final class AnimationHandler {
         return getOffset(config, animationData, timeDifference);
     }
 
-    public void setOrigin(Object builtChunk, BlockPos position) {
-        if (client.player == null) {
-            return;
+    public AnimationOffset offsetFor(Object builtChunk, BlockPos position) {
+        if (!timeStamps.containsKey(builtChunk)) {
+            setOrigin(builtChunk, position);
         }
 
-        BlockPos playerPos = zeroedPlayerPos(client.player);
-        BlockPos centeredChunkPos = zeroedCenteredChunkPos(position);
-        long distanceX = playerPos.getX() - centeredChunkPos.getX();
-        long distanceZ = playerPos.getZ() - centeredChunkPos.getZ();
-        boolean nearPlayer = distanceX * distanceX + distanceZ * distanceZ <= 64L * 64L;
+        return offsetFor(builtChunk);
+    }
+
+    public void setOrigin(Object builtChunk, BlockPos position) {
+        ClientPlayerEntity player = client.player;
+        Direction facing = null;
+        boolean nearPlayer = false;
+
+        if (player != null) {
+            BlockPos playerPos = zeroedPlayerPos(player);
+            BlockPos centeredChunkPos = zeroedCenteredChunkPos(position);
+            long distanceX = playerPos.getX() - centeredChunkPos.getX();
+            long distanceZ = playerPos.getZ() - centeredChunkPos.getZ();
+            nearPlayer = distanceX * distanceX + distanceZ * distanceZ <= 64L * 64L;
+
+            if (ChunkAnimatorConfig.get().mode == AnimationMode.HORIZONTAL_SLIDE) {
+                facing = getChunkFacing(playerPos, centeredChunkPos);
+            }
+        }
 
         if (!ChunkAnimatorConfig.get().disableAroundPlayer || !nearPlayer) {
-            Direction facing = ChunkAnimatorConfig.get().mode == AnimationMode.HORIZONTAL_SLIDE
-                    ? getChunkFacing(playerPos, centeredChunkPos)
-                    : null;
             timeStamps.put(builtChunk, new AnimationData(-1L, facing, new BlockPos(position.getX(), position.getY(), position.getZ())));
         } else {
             timeStamps.remove(builtChunk);
