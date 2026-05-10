@@ -7,9 +7,11 @@
   "client": [
     "BuiltChunkMixin",
     "WorldRendererMixin",
+    "sodium.SodiumRenderSectionMixin",
     "sodium.SodiumRenderRegionMixin",
     "sodium.SodiumDefaultChunkRendererMixin",
     "sodium.SodiumShaderLoaderMixin",
+    "sodium.legacy.LegacySodiumRenderSectionMixin",
     "sodium.legacy.LegacySodiumRenderRegionMixin",
     "sodium.legacy.LegacySodiumDefaultChunkRendererMixin",
     "sodium.legacy.LegacySodiumShaderLoaderMixin"
