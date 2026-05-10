@@ -21,6 +21,7 @@ public final class SodiumShaderSupport {
 
     private static final WeakHashMap<Object, Integer> SECTION_STARTS = new WeakHashMap<>();
     private static final Map<Class<?>, Method> GET_SECTION_METHODS = new HashMap<>();
+    private static final Map<Class<?>, Method> IS_BUILT_METHODS = new HashMap<>();
     private static final Map<Integer, UniformLocations> UNIFORMS = new HashMap<>();
     private static final int[] DISABLED_TIMES = new int[REGION_SIZE];
     private static final int[] SECTION_TIMES = new int[REGION_SIZE];
@@ -110,7 +111,7 @@ public final class SodiumShaderSupport {
 
         for (int sectionId = 0; sectionId < REGION_SIZE; sectionId++) {
             Object section = section(region, getSection, sectionId);
-            Integer startTime = section == null ? null : SECTION_STARTS.get(section);
+            Integer startTime = sectionStart(section, now);
 
             if (startTime == null
                     || now - startTime >= config.animationDuration
@@ -123,6 +124,21 @@ public final class SodiumShaderSupport {
                 SECTION_TIMES[sectionId] = startTime;
             }
         }
+    }
+
+    private static Integer sectionStart(Object section, int now) {
+        if (section == null) {
+            return null;
+        }
+
+        Integer startTime = SECTION_STARTS.get(section);
+
+        if (startTime == null && isBuilt(section)) {
+            SECTION_STARTS.put(section, now);
+            return now;
+        }
+
+        return startTime;
     }
 
     private static int now() {
@@ -162,6 +178,37 @@ public final class SodiumShaderSupport {
         try {
             return getSection.invoke(region, sectionId);
         } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
+    }
+
+    private static boolean isBuilt(Object section) {
+        Method isBuilt = isBuiltMethod(section);
+
+        if (isBuilt == null) {
+            return false;
+        }
+
+        try {
+            return Boolean.TRUE.equals(isBuilt.invoke(section));
+        } catch (ReflectiveOperationException ignored) {
+            return false;
+        }
+    }
+
+    private static Method isBuiltMethod(Object section) {
+        Class<?> type = section.getClass();
+
+        if (IS_BUILT_METHODS.containsKey(type)) {
+            return IS_BUILT_METHODS.get(type);
+        }
+
+        try {
+            Method method = type.getMethod("isBuilt");
+            IS_BUILT_METHODS.put(type, method);
+            return method;
+        } catch (ReflectiveOperationException ignored) {
+            IS_BUILT_METHODS.put(type, null);
             return null;
         }
     }
