@@ -5,8 +5,8 @@ import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.Redirect;
-import ru.donyka.chunkanimator.AnimationOffset;
 import ru.donyka.chunkanimator.compat.SodiumRenderRegionBridge;
+import ru.donyka.chunkanimator.compat.SodiumShaderSupport;
 
 @Pseudo
 @Mixin(targets = "me.jellysquid.mods.sodium.client.render.chunk.DefaultChunkRenderer", remap = false)
@@ -28,8 +28,13 @@ public abstract class LegacySodiumDefaultChunkRendererMixin {
     )
     private static int chunkanimator$getOriginX(@Coerce Object region) {
         SodiumRenderRegionBridge bridge = (SodiumRenderRegionBridge) region;
-        AnimationOffset offset = bridge.chunkanimator$animationOffset();
-        return bridge.chunkanimator$originX() + Math.round(offset.x());
+        SodiumShaderSupport.apply(
+                region,
+                bridge.chunkanimator$originX(),
+                bridge.chunkanimator$originY(),
+                bridge.chunkanimator$originZ()
+        );
+        return bridge.chunkanimator$originX();
     }
 
     @Redirect(
@@ -43,9 +48,7 @@ public abstract class LegacySodiumDefaultChunkRendererMixin {
             require = 0
     )
     private static int chunkanimator$getOriginY(@Coerce Object region) {
-        SodiumRenderRegionBridge bridge = (SodiumRenderRegionBridge) region;
-        AnimationOffset offset = bridge.chunkanimator$animationOffset();
-        return bridge.chunkanimator$originY() + Math.round(offset.y());
+        return ((SodiumRenderRegionBridge) region).chunkanimator$originY();
     }
 
     @Redirect(
@@ -59,8 +62,6 @@ public abstract class LegacySodiumDefaultChunkRendererMixin {
             require = 0
     )
     private static int chunkanimator$getOriginZ(@Coerce Object region) {
-        SodiumRenderRegionBridge bridge = (SodiumRenderRegionBridge) region;
-        AnimationOffset offset = bridge.chunkanimator$animationOffset();
-        return bridge.chunkanimator$originZ() + Math.round(offset.z());
+        return ((SodiumRenderRegionBridge) region).chunkanimator$originZ();
     }
 }
