@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import ru.donyka.chunkanimator.compat.SodiumShaderSupport;
 import ru.donyka.chunkanimator.AnimationOffset;
 import ru.donyka.chunkanimator.config.AnimationMode;
 import ru.donyka.chunkanimator.config.ChunkAnimatorConfig;
@@ -97,6 +98,42 @@ public final class AnimationHandler {
     public void clear() {
         timeStamps.clear();
         completedOrigins.clear();
+        SodiumShaderSupport.clear();
+    }
+
+    public int shaderMinY() {
+        return minY();
+    }
+
+    public int shaderMaxY() {
+        return maxY();
+    }
+
+    public double shaderHorizonHeight() {
+        return horizonHeight();
+    }
+
+    public int shaderPlayerBlockX() {
+        LocalPlayer player = client.player;
+        return player == null ? 0 : player.blockPosition().getX();
+    }
+
+    public int shaderPlayerBlockZ() {
+        LocalPlayer player = client.player;
+        return player == null ? 0 : player.blockPosition().getZ();
+    }
+
+    public boolean shaderIsNearPlayer(int originX, int originZ) {
+        LocalPlayer player = client.player;
+
+        if (player == null) {
+            return false;
+        }
+
+        BlockPos playerPos = zeroedPlayerPos(player);
+        long distanceX = playerPos.getX() - (originX + 8L);
+        long distanceZ = playerPos.getZ() - (originZ + 8L);
+        return distanceX * distanceX + distanceZ * distanceZ <= 64L * 64L;
     }
 
     private AnimationOffset getOffset(ChunkAnimatorConfig config, AnimationData animationData, long timeDifference) {
