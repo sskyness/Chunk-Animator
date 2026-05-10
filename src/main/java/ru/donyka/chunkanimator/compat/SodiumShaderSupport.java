@@ -5,6 +5,7 @@ import ru.donyka.chunkanimator.ChunkAnimator;
 import ru.donyka.chunkanimator.config.ChunkAnimatorConfig;
 import ru.donyka.chunkanimator.handler.AnimationHandler;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,19 +16,32 @@ public final class SodiumShaderSupport {
     private static final int REGION_HEIGHT = 4;
     private static final int REGION_LENGTH = 8;
     private static final int REGION_SIZE = REGION_WIDTH * REGION_HEIGHT * REGION_LENGTH;
-    private static final int UNSEEN = -2;
     private static final int DONE = -1;
     private static final long START_TIME = System.currentTimeMillis();
 
-    private static final WeakHashMap<Object, RegionState> REGIONS = new WeakHashMap<>();
+    private static final WeakHashMap<Object, Integer> SECTION_STARTS = new WeakHashMap<>();
+    private static final Map<Class<?>, Method> GET_SECTION_METHODS = new HashMap<>();
     private static final Map<Integer, UniformLocations> UNIFORMS = new HashMap<>();
     private static final int[] DISABLED_TIMES = new int[REGION_SIZE];
+    private static final int[] SECTION_TIMES = new int[REGION_SIZE];
 
     static {
         Arrays.fill(DISABLED_TIMES, DONE);
     }
 
     private SodiumShaderSupport() {
+    }
+
+    public static synchronized void markSectionBuilt(Object section, boolean built) {
+        if (section == null) {
+            return;
+        }
+
+        if (built) {
+            SECTION_STARTS.putIfAbsent(section, now());
+        } else {
+            SECTION_STARTS.remove(section);
+        }
     }
 
     public static void apply(Object region, int regionOriginX, int regionOriginY, int regionOriginZ) {
@@ -53,8 +67,7 @@ public final class SodiumShaderSupport {
         }
 
         int now = now();
-        RegionState state = stateFor(region, regionOriginX, regionOriginY, regionOriginZ);
-        state.update(now, regionOriginX, regionOriginY, regionOriginZ, config.animationDuration);
+        fillSectionTimes(region, now, regionOriginX, regionOriginZ, config);
 
         AnimationHandler handler = ChunkAnimator.animationHandler();
 
@@ -64,7 +77,7 @@ public final class SodiumShaderSupport {
         uniforms.setInt("u_ChunkAnimatorCurrentTime", now);
         uniforms.setInt("u_ChunkAnimatorDuration", config.animationDuration);
         uniforms.setInt("u_ChunkAnimatorDisableAroundPlayer", config.disableAroundPlayer ? 1 : 0);
-        uniforms.setIntArray("u_ChunkAnimatorStartTimes", state.times);
+        uniforms.setIntArray("u_ChunkAnimatorStartTimes", SECTION_TIMES);
         uniforms.setFloat("u_ChunkAnimatorMinY", handler.shaderMinY());
         uniforms.setFloat("u_ChunkAnimatorMaxY", handler.shaderMaxY());
         uniforms.setFloat("u_ChunkAnimatorHorizon", (float) handler.shaderHorizonHeight());
@@ -76,23 +89,40 @@ public final class SodiumShaderSupport {
     }
 
     public static void clear() {
-        REGIONS.clear();
+        SECTION_STARTS.clear();
     }
 
-    private static RegionState stateFor(Object region, int originX, int originY, int originZ) {
-        RegionState state = REGIONS.get(region);
+    private static synchronized void fillSectionTimes(
+            Object region,
+            int now,
+            int regionOriginX,
+            int regionOriginZ,
+            ChunkAnimatorConfig config
+    ) {
+        Method getSection = getSectionMethod(region);
 
-        if (state == null) {
-            state = new RegionState(originX, originY, originZ);
-            REGIONS.put(region, state);
-            return state;
+        if (getSection == null) {
+            System.arraycopy(DISABLED_TIMES, 0, SECTION_TIMES, 0, REGION_SIZE);
+            return;
         }
 
-        if (state.originX != originX || state.originY != originY || state.originZ != originZ) {
-            state.reset(originX, originY, originZ);
-        }
+        AnimationHandler handler = ChunkAnimator.animationHandler();
 
-        return state;
+        for (int sectionId = 0; sectionId < REGION_SIZE; sectionId++) {
+            Object section = section(region, getSection, sectionId);
+            Integer startTime = section == null ? null : SECTION_STARTS.get(section);
+
+            if (startTime == null
+                    || now - startTime >= config.animationDuration
+                    || config.disableAroundPlayer && handler.shaderIsNearPlayer(
+                    regionOriginX + localX(sectionId) * 16,
+                    regionOriginZ + localZ(sectionId) * 16
+            )) {
+                SECTION_TIMES[sectionId] = DONE;
+            } else {
+                SECTION_TIMES[sectionId] = startTime;
+            }
+        }
     }
 
     private static int now() {
@@ -111,44 +141,28 @@ public final class SodiumShaderSupport {
         return (sectionId >> 2) & 7;
     }
 
-    private static final class RegionState {
-        private final int[] times = new int[REGION_SIZE];
-        private int originX;
-        private int originY;
-        private int originZ;
+    private static Method getSectionMethod(Object region) {
+        Class<?> type = region.getClass();
 
-        private RegionState(int originX, int originY, int originZ) {
-            reset(originX, originY, originZ);
+        if (GET_SECTION_METHODS.containsKey(type)) {
+            return GET_SECTION_METHODS.get(type);
         }
 
-        private void reset(int originX, int originY, int originZ) {
-            this.originX = originX;
-            this.originY = originY;
-            this.originZ = originZ;
-            Arrays.fill(times, UNSEEN);
+        try {
+            Method method = type.getMethod("getSection", int.class);
+            GET_SECTION_METHODS.put(type, method);
+            return method;
+        } catch (ReflectiveOperationException ignored) {
+            GET_SECTION_METHODS.put(type, null);
+            return null;
         }
+    }
 
-        private void update(int now, int regionOriginX, int regionOriginY, int regionOriginZ, int duration) {
-            AnimationHandler handler = ChunkAnimator.animationHandler();
-            boolean disableAroundPlayer = ChunkAnimatorConfig.get().disableAroundPlayer;
-
-            for (int sectionId = 0; sectionId < times.length; sectionId++) {
-                int time = times[sectionId];
-
-                if (time == UNSEEN) {
-                    int sectionOriginX = regionOriginX + localX(sectionId) * 16;
-                    int sectionOriginY = regionOriginY + localY(sectionId) * 16;
-                    int sectionOriginZ = regionOriginZ + localZ(sectionId) * 16;
-
-                    if (disableAroundPlayer && handler.shaderIsNearPlayer(sectionOriginX, sectionOriginZ)) {
-                        times[sectionId] = DONE;
-                    } else {
-                        times[sectionId] = now;
-                    }
-                } else if (time >= 0 && now - time >= duration) {
-                    times[sectionId] = DONE;
-                }
-            }
+    private static Object section(Object region, Method getSection, int sectionId) {
+        try {
+            return getSection.invoke(region, sectionId);
+        } catch (ReflectiveOperationException ignored) {
+            return null;
         }
     }
 
