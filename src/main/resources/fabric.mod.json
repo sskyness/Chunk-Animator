@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "chunkanimator",
+  "version": "${version}",
+  "name": "Chunk Animator",
+  "description": "Animates chunks when they appear.",
+  "authors": [
+    "Donyka"
+  ],
+  "contact": {
+    "sources": "https://github.com/sskyness/Chunk-Animator"
+  },
+  "license": "MIT",
+  "icon": "assets/chunkanimator/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "ru.donyka.chunkanimator.ChunkAnimator"
+    ],
+    "modmenu": [
+      "ru.donyka.chunkanimator.config.ChunkAnimatorModMenu"
+    ]
+  },
+  "mixins": [
+    "chunkanimator.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "cloth-config2": "*",
+    "minecraft": "${minecraft_version}",
+    "java": ">=${java_version}"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}
+
